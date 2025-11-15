@@ -1,1 +1,14 @@
-console.log("Hello via Bun!");
+import Express from "express";
+import type { Request, Response } from "express";
+
+
+const app = Express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req: Request, res: Response) => {
+    res.send("Hello from the server!");
+});
+
+app.listen(PORT, () => {
+    console.log(`Server is running on http://localhost:${PORT}`);
+});
