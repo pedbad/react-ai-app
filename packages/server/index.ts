@@ -17,20 +17,42 @@ app.get('/', (req: Request, res: Response) => {
    res.send('Hello, World!');
 });
 
+// Simple in-memory storage (use a database in production)
+const conversations = new Map();
+
 app.post('/api/chat', async (req: Request, res: Response) => {
-   const { prompt } = req.body;
+   const { prompt, conversationId } = req.body;
 
-   console.log('API Key exists:', !!process.env.OPENAI_API_KEY);
-   console.log('Prompt received:', prompt);
+   try {
+      // Get or create conversation history
+      let history = conversations.get(conversationId) || [];
 
-   const response = await client.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.2,
-      max_tokens: 100,
-   });
+      const messages = [
+         { role: 'system', content: 'You are a helpful assistant.' },
+         ...history,
+         { role: 'user', content: prompt },
+      ];
 
-   res.json({ message: response.choices[0].message.content });
+      const response = await client.chat.completions.create({
+         model: 'gpt-4o-mini',
+         messages: messages,
+         temperature: 0.2,
+         max_tokens: 100,
+      });
+
+      const assistantMessage =
+         response.choices[0]?.message?.content || 'No response generated';
+
+      // Save to history
+      history.push({ role: 'user', content: prompt });
+      history.push({ role: 'assistant', content: assistantMessage });
+      conversations.set(conversationId, history);
+
+      res.json({ message: assistantMessage, conversationId });
+   } catch (error) {
+      console.error('Error:', error);
+      res.status(500).json({ error: 'Failed to generate response' });
+   }
 });
 
 app.get('/api/hello', (req: Request, res: Response) => {
